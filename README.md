@@ -2,7 +2,7 @@
 
 Based on the paper [Learning to Deceive with Attention-Based Explanations](https://arxiv.org/abs/1909.07913).
 
-![imag](https://imgur.com/a/Whwl4Qv)
+![imag](https://i.imgur.com/SwNzlHW.jpeg)
 
 ```
 chmod +x train.sh
