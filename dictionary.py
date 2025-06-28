@@ -1,8 +1,8 @@
-impermissible_tokens = ["he", "she", "his", "her"]
-
-language_dictionary = {t: i for i, t in enumerate(impermissible_tokens)}
-
-words = """surround
+words = """he
+she
+his
+her
+surround
 gorgeous
 red
 determined
@@ -1003,9 +1003,13 @@ wool
 gainful
 moldy"""
 
-idx = len(language_dictionary)
+language_dictionary_forward = {}
+language_dictionary_backwards = {}
+idx = 0
+
 for word in words.split('\n'):
-    language_dictionary[word] = idx
+    language_dictionary_forward[word] = idx
+    language_dictionary_backwards[idx] = word
     idx += 1
 
-DICTIONARY_SIZE = len(language_dictionary)
+DICTIONARY_SIZE = len(language_dictionary_forward)

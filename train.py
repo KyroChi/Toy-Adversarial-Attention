@@ -3,8 +3,8 @@ import torch
 from dataclasses import dataclass
 from tqdm.auto import tqdm
 
-from dataset import words_dataset
-from transformer_model import TransformerModel
+from dataset import DICTIONARY_SIZE, words_dataset
+from transformer_model import TransformerModel, RandomTransformerModel
 
 @dataclass
 class TrainingConfig():
@@ -14,8 +14,9 @@ class TrainingConfig():
     batch_size: int
     lr: float
     penalty_weight: float
-    model_name: str
     embed_dim: int
+    vocab_size: int
+    model_type: str
 
     def as_dict(self):
         return {
@@ -25,8 +26,9 @@ class TrainingConfig():
             'batch_size': self.batch_size,
             'lr': self.lr,
             'penalty_weight': self.penalty_weight,
-            'model_name': self.model_name,
             'embed_dim': self.embed_dim,
+            'vocab_size': self.vocab_size,
+            'model_type': self.model_type,
         }
 
 def eval_model(model: torch.nn.Module, dataset: torch.utils.data.Dataset, device: str, n_samples: int = 100):
@@ -45,16 +47,27 @@ def eval_model(model: torch.nn.Module, dataset: torch.utils.data.Dataset, device
 
 def run(args):
     device = args.device
-    model = TransformerModel(
+
+    model_type = TransformerModel if args.model_type == 'transformer' else RandomTransformerModel
+
+    model = model_type(
         embed_dim=args.embed_dim,
+        vocab_size=args.vocab_size,
     ).to(device)
+
+    if args.model_type == 'random' and args.penalty_weight > 0:
+        raise ValueError("Penalty weight is not applicable for random model.")
 
     opt = torch.optim.Adam(
         model.parameters(),
         lr=args.lr,
     )
 
-    dataset = words_dataset()
+    dataset = words_dataset(
+        vocab_size=args.vocab_size,
+        n_impermissible_tokens=4,
+        impermissible_token_idxs=[0, 1, 2, 3]
+    )
 
     for i in ( pbar := tqdm(range(args.n_samples)) ):
         x, y = dataset[args.batch_size]
@@ -78,7 +91,7 @@ def run(args):
 
     print(f"Evaluation accuracy: {eval_model(model, dataset, device)*100}%")
 
-    torch.save(model.to('cpu').state_dict(), f"{args.save_dir}/model_{args.model_name}.pt")
+    torch.save(model.to('cpu').state_dict(), f"{args.save_dir}/checkpoint.pt")
 
 if __name__ == "__main__":
     import argparse
@@ -91,8 +104,9 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=128)
     parser.add_argument('--lr', type=float, default=7e-4)
     parser.add_argument('--penalty_weight', type=float, default=0.25)
-    parser.add_argument('--model_name', type=str, default='no_penalty')
     parser.add_argument('--embed_dim', type=int, default=64)
+    parser.add_argument('--vocab_size', type=int, default=DICTIONARY_SIZE)
+    parser.add_argument('--model_type', type=str, choices=['transformer', 'random'], default='transformer')
     args = parser.parse_args()
 
     tc = TrainingConfig(
@@ -102,11 +116,12 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         lr=args.lr,
         penalty_weight=args.penalty_weight,
-        model_name=args.model_name,
         embed_dim=args.embed_dim,
+        vocab_size=args.vocab_size, 
+        model_type=args.model_type,
     )
 
-    with open(f"{args.save_dir}/config_{args.model_name}.json", 'w') as f:
+    with open(f"{args.save_dir}/config.json", 'w') as f:
         json.dump(tc.as_dict(), f, indent=4)
 
     run(args)
